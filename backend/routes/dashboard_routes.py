@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Product, User
+from models import Product, User, OrganizationSetting
 from dependencies import get_current_user
 
 
@@ -29,16 +29,28 @@ def get_dashboard_summary(
         product.quantity for product in products
     )
 
+    settings = db.query(OrganizationSetting).filter(
+        OrganizationSetting.organization_id == current_user.organization_id
+    ).first()
+
+    default_threshold = (
+        settings.default_low_stock_threshold if settings else 5
+    )
+
     low_stock_products = [
         product for product in products
-        if product.low_stock_threshold is not None
-        and product.quantity <= product.low_stock_threshold
+        if product.quantity <= (
+            product.low_stock_threshold
+            if product.low_stock_threshold is not None
+            else default_threshold
+        )
     ]
 
     return {
         "total_products": total_products,
         "total_quantity": total_quantity,
         "low_stock_count": len(low_stock_products),
+        "default_low_stock_threshold": default_threshold,
         "low_stock_products": [
             {
                 "id": product.id,

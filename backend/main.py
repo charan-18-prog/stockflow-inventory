@@ -9,6 +9,7 @@ from routes.auth_routes import router as auth_router
 from routes.product_routes import router as product_router
 from routes.dashboard_routes import router as dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
+from routes.settings_routes import router as settings_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +32,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(product_router)
 app.include_router(dashboard_router)
+app.include_router(settings_router)
 
 
 @app.get("/")

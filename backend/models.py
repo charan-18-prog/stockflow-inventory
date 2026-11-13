@@ -74,3 +74,21 @@ class Product(Base):
             name="unique_sku_per_organization"
         ),
     )
+# 4. Organization Settings Table
+class OrganizationSetting(Base):
+    __tablename__ = "organization_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True
+    )
+
+    default_low_stock_threshold = Column(
+        Integer,
+        nullable=False,
+        default=5
+    )

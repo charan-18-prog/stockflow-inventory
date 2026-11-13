@@ -23,6 +23,14 @@ function App() {
   const [productMessage, setProductMessage] = useState("");
   const [editingId, setEditingId] = useState(null);
 
+  // Settings state
+  const [settings, setSettings] = useState({
+    default_low_stock_threshold: 5,
+  });
+  const [thresholdInput, setThresholdInput] = useState("5");
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
   const emptyForm = {
     name: "",
     sku: "",
@@ -71,6 +79,63 @@ function App() {
     setProducts(data);
   };
 
+  // Load settings
+  const loadSettings = async () => {
+    const data = await apiRequest("/settings/");
+
+    setSettings(data);
+    setThresholdInput(
+      String(data.default_low_stock_threshold)
+    );
+  };
+
+  // Update settings
+  const handleSettingsSubmit = async (e) => {
+    e.preventDefault();
+    setSettingsMessage("");
+
+    const threshold = Number(thresholdInput);
+
+    if (
+      !Number.isInteger(threshold) ||
+      threshold < 0
+    ) {
+      setSettingsMessage(
+        "Enter a valid non-negative whole number."
+      );
+      return;
+    }
+
+    setSettingsLoading(true);
+
+    try {
+      const data = await apiRequest(
+        `/settings/?threshold=${threshold}`,
+        { method: "PUT" }
+      );
+
+      setSettings({
+        default_low_stock_threshold:
+          data.default_low_stock_threshold,
+      });
+
+      setThresholdInput(
+        String(data.default_low_stock_threshold)
+      );
+
+      setSettingsMessage(
+        "Settings updated successfully!"
+      );
+
+      await loadDashboard();
+      await loadProducts(search);
+    } catch (error) {
+      setSettingsMessage(error.message);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   // Load data after login and when page changes
   useEffect(() => {
     if (!token) return;
@@ -79,15 +144,17 @@ function App() {
       try {
         if (page === "dashboard") {
           await loadDashboard();
-        } else {
+        } else if (page === "products") {
           await loadProducts(search);
+        } else if (page === "settings") {
+          await loadSettings();
         }
       } catch (error) {
         setProductMessage(error.message);
 
         if (
-          error.message.includes("token") ||
-          error.message.includes("authenticated")
+          error.message.toLowerCase().includes("token") ||
+          error.message.toLowerCase().includes("authenticated")
         ) {
           handleLogout();
         }
@@ -143,6 +210,7 @@ function App() {
     setDashboard(null);
     setProducts([]);
     setPage("dashboard");
+    setSettingsMessage("");
   };
 
   // Form input changes
@@ -163,9 +231,14 @@ function App() {
     const productData = {
       ...form,
       quantity: Number(form.quantity),
-      cost_price: form.cost_price === "" ? null : Number(form.cost_price),
+      cost_price:
+        form.cost_price === ""
+          ? null
+          : Number(form.cost_price),
       selling_price:
-        form.selling_price === "" ? null : Number(form.selling_price),
+        form.selling_price === ""
+          ? null
+          : Number(form.selling_price),
       low_stock_threshold:
         form.low_stock_threshold === ""
           ? null
@@ -243,7 +316,9 @@ function App() {
       <div className="auth-container">
         <div className="auth-card">
           <h1>StockFlow</h1>
-          <p className="subtitle">Inventory Management System</p>
+          <p className="subtitle">
+            Inventory Management System
+          </p>
 
           <h2>{isLogin ? "Welcome Back" : "Create Account"}</h2>
 
@@ -253,7 +328,9 @@ function App() {
                 <label>Organization Name</label>
                 <input
                   value={organizationName}
-                  onChange={(e) => setOrganizationName(e.target.value)}
+                  onChange={(e) =>
+                    setOrganizationName(e.target.value)
+                  }
                   placeholder="Enter organization name"
                   required
                 />
@@ -292,17 +369,21 @@ function App() {
             </button>
           </form>
 
-          {message && <p className="message">{message}</p>}
+          {message && (
+            <p className="message">{message}</p>
+          )}
 
           <p className="toggle-text">
             {isLogin
               ? "Don't have an account?"
               : "Already have an account?"}
 
-            <span onClick={() => {
-              setIsLogin(!isLogin);
-              setMessage("");
-            }}>
+            <span
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setMessage("");
+              }}
+            >
               {isLogin ? " Sign Up" : " Login"}
             </span>
           </p>
@@ -337,6 +418,17 @@ function App() {
           >
             Products
           </button>
+
+          <button
+            className={page === "settings" ? "active" : ""}
+            onClick={() => {
+              setPage("settings");
+              setProductMessage("");
+              setSettingsMessage("");
+            }}
+          >
+            Settings
+          </button>
         </nav>
 
         <button onClick={handleLogout}>Logout</button>
@@ -346,7 +438,9 @@ function App() {
         {page === "dashboard" ? (
           <>
             <h2>Dashboard</h2>
-            <p className="dashboard-subtitle">Inventory overview</p>
+            <p className="dashboard-subtitle">
+              Inventory overview
+            </p>
 
             {dashboard && (
               <>
@@ -382,21 +476,78 @@ function App() {
                           <th>Threshold</th>
                         </tr>
                       </thead>
+
                       <tbody>
-                        {dashboard.low_stock_products.map((product) => (
-                          <tr key={product.id}>
-                            <td>{product.name}</td>
-                            <td>{product.sku}</td>
-                            <td>{product.quantity}</td>
-                            <td>{product.low_stock_threshold}</td>
-                          </tr>
-                        ))}
+                        {dashboard.low_stock_products.map(
+                          (product) => (
+                            <tr key={product.id}>
+                              <td>{product.name}</td>
+                              <td>{product.sku}</td>
+                              <td>{product.quantity}</td>
+                              <td>
+                                {product.low_stock_threshold ??
+                                  dashboard.default_low_stock_threshold}
+                              </td>
+                            </tr>
+                          )
+                        )}
                       </tbody>
                     </table>
                   )}
                 </section>
               </>
             )}
+          </>
+        ) : page === "settings" ? (
+          <>
+            <h2>Settings</h2>
+            <p className="dashboard-subtitle">
+              Manage your inventory settings
+            </p>
+
+            <section className="product-form-section">
+              <h3>Low Stock Configuration</h3>
+
+              <form onSubmit={handleSettingsSubmit}>
+                <div className="form-group">
+                  <label>
+                    Default Low Stock Threshold
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={thresholdInput}
+                    onChange={(e) =>
+                      setThresholdInput(e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <p>
+                  Products with quantity less than or equal
+                  to this value will be marked as low stock,
+                  unless they have their own threshold.
+                </p>
+
+                <button
+                  type="submit"
+                  disabled={settingsLoading}
+                >
+                  {settingsLoading
+                    ? "Saving..."
+                    : "Save Settings"}
+                </button>
+              </form>
+
+              {settingsMessage && (
+                <p className="product-message">
+                  {settingsMessage}
+                </p>
+              )}
+            </section>
           </>
         ) : (
           <>
@@ -406,7 +557,9 @@ function App() {
             </p>
 
             <section className="product-form-section">
-              <h3>{editingId ? "Edit Product" : "Add New Product"}</h3>
+              <h3>
+                {editingId ? "Edit Product" : "Add New Product"}
+              </h3>
 
               <form onSubmit={handleProductSubmit}>
                 <div className="product-form-grid">
@@ -489,7 +642,9 @@ function App() {
 
                 <div className="form-buttons">
                   <button type="submit">
-                    {editingId ? "Update Product" : "Add Product"}
+                    {editingId
+                      ? "Update Product"
+                      : "Add Product"}
                   </button>
 
                   {editingId && (
@@ -509,7 +664,9 @@ function App() {
             </section>
 
             {productMessage && (
-              <p className="product-message">{productMessage}</p>
+              <p className="product-message">
+                {productMessage}
+              </p>
             )}
 
             <section className="products-list-section">
@@ -522,7 +679,9 @@ function App() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") loadProducts(search);
+                    if (e.key === "Enter") {
+                      loadProducts(search);
+                    }
                   }}
                 />
 
@@ -560,17 +719,22 @@ function App() {
                         <td>{product.name}</td>
                         <td>{product.sku}</td>
                         <td>{product.quantity}</td>
+
                         <td>
-                          {product.low_stock_threshold !== null &&
-                          product.quantity <= product.low_stock_threshold
+                          {product.quantity <= (
+                            product.low_stock_threshold ??
+                            settings.default_low_stock_threshold
+                          )
                             ? "Low Stock"
                             : "Normal"}
                         </td>
+
                         <td>
                           {product.selling_price === null
                             ? "-"
                             : `₹${product.selling_price}`}
                         </td>
+
                         <td>
                           <button
                             className="edit-button"
@@ -581,7 +745,9 @@ function App() {
 
                           <button
                             className="delete-button"
-                            onClick={() => handleDelete(product.id)}
+                            onClick={() =>
+                              handleDelete(product.id)
+                            }
                           >
                             Delete
                           </button>
@@ -591,7 +757,9 @@ function App() {
 
                     {products.length === 0 && (
                       <tr>
-                        <td colSpan="6">No products found.</td>
+                        <td colSpan="6">
+                          No products found.
+                        </td>
                       </tr>
                     )}
                   </tbody>
