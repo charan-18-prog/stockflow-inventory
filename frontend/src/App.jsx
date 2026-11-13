@@ -27,10 +27,13 @@ function App() {
   const [settings, setSettings] = useState({
     default_low_stock_threshold: 5,
   });
+
   const [thresholdInput, setThresholdInput] = useState("5");
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsLoading, setSettingsLoading] = useState(false);
 
+  // Empty product form
+  // Individual threshold is optional
   const emptyForm = {
     name: "",
     sku: "",
@@ -38,7 +41,7 @@ function App() {
     quantity: 0,
     cost_price: "",
     selling_price: "",
-    low_stock_threshold: 5,
+    low_stock_threshold: "",
   };
 
   const [form, setForm] = useState(emptyForm);
@@ -84,6 +87,7 @@ function App() {
     const data = await apiRequest("/settings/");
 
     setSettings(data);
+
     setThresholdInput(
       String(data.default_low_stock_threshold)
     );
@@ -146,6 +150,7 @@ function App() {
           await loadDashboard();
         } else if (page === "products") {
           await loadProducts(search);
+          await loadSettings();
         } else if (page === "settings") {
           await loadSettings();
         }
@@ -217,10 +222,10 @@ function App() {
   const handleFormChange = (e) => {
     const { name, value } = e.target;
 
-    setForm({
-      ...form,
+    setForm((previousForm) => ({
+      ...previousForm,
       [name]: value,
-    });
+    }));
   };
 
   // Add or update product
@@ -231,14 +236,18 @@ function App() {
     const productData = {
       ...form,
       quantity: Number(form.quantity),
+
       cost_price:
         form.cost_price === ""
           ? null
           : Number(form.cost_price),
+
       selling_price:
         form.selling_price === ""
           ? null
           : Number(form.selling_price),
+
+      // Blank means use organization default from Settings
       low_stock_threshold:
         form.low_stock_threshold === ""
           ? null
@@ -286,7 +295,11 @@ function App() {
 
     setEditingId(product.id);
     setProductMessage("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   // Delete product
@@ -303,6 +316,7 @@ function App() {
       });
 
       setProductMessage("Product deleted successfully!");
+
       await loadProducts(search);
       await loadDashboard();
     } catch (error) {
@@ -316,16 +330,20 @@ function App() {
       <div className="auth-container">
         <div className="auth-card">
           <h1>StockFlow</h1>
+
           <p className="subtitle">
             Inventory Management System
           </p>
 
-          <h2>{isLogin ? "Welcome Back" : "Create Account"}</h2>
+          <h2>
+            {isLogin ? "Welcome Back" : "Create Account"}
+          </h2>
 
           <form onSubmit={handleSubmit}>
             {!isLogin && (
               <div className="form-group">
                 <label>Organization Name</label>
+
                 <input
                   value={organizationName}
                   onChange={(e) =>
@@ -339,6 +357,7 @@ function App() {
 
             <div className="form-group">
               <label>Email</label>
+
               <input
                 type="email"
                 value={email}
@@ -350,6 +369,7 @@ function App() {
 
             <div className="form-group">
               <label>Password</label>
+
               <input
                 type="password"
                 value={password}
@@ -431,13 +451,16 @@ function App() {
           </button>
         </nav>
 
-        <button onClick={handleLogout}>Logout</button>
+        <button onClick={handleLogout}>
+          Logout
+        </button>
       </header>
 
       <main className="dashboard-content">
         {page === "dashboard" ? (
           <>
             <h2>Dashboard</h2>
+
             <p className="dashboard-subtitle">
               Inventory overview
             </p>
@@ -501,6 +524,7 @@ function App() {
         ) : page === "settings" ? (
           <>
             <h2>Settings</h2>
+
             <p className="dashboard-subtitle">
               Manage your inventory settings
             </p>
@@ -552,6 +576,7 @@ function App() {
         ) : (
           <>
             <h2>Products</h2>
+
             <p className="dashboard-subtitle">
               Manage your inventory products
             </p>
@@ -565,6 +590,7 @@ function App() {
                 <div className="product-form-grid">
                   <div className="form-group">
                     <label>Product Name *</label>
+
                     <input
                       name="name"
                       value={form.name}
@@ -575,6 +601,7 @@ function App() {
 
                   <div className="form-group">
                     <label>SKU *</label>
+
                     <input
                       name="sku"
                       value={form.sku}
@@ -585,6 +612,7 @@ function App() {
 
                   <div className="form-group">
                     <label>Quantity *</label>
+
                     <input
                       type="number"
                       name="quantity"
@@ -597,6 +625,7 @@ function App() {
 
                   <div className="form-group">
                     <label>Cost Price</label>
+
                     <input
                       type="number"
                       name="cost_price"
@@ -609,6 +638,7 @@ function App() {
 
                   <div className="form-group">
                     <label>Selling Price</label>
+
                     <input
                       type="number"
                       name="selling_price"
@@ -620,18 +650,24 @@ function App() {
                   </div>
 
                   <div className="form-group">
-                    <label>Low Stock Threshold</label>
+                    <label>
+                      Low Stock Threshold (Optional)
+                    </label>
+
                     <input
                       type="number"
                       name="low_stock_threshold"
                       min="0"
-                      value={form.low_stock_threshold}
+                      step="1"
+                      value={form.low_stock_threshold ?? ""}
                       onChange={handleFormChange}
+                      placeholder="Use default from Settings"
                     />
                   </div>
 
                   <div className="form-group full-width">
                     <label>Description</label>
+
                     <textarea
                       name="description"
                       value={form.description}
