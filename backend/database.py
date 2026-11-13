@@ -20,12 +20,15 @@ database_url = URL.create(
     database=os.getenv("DB_NAME")
 )
 
-engine = create_engine(database_url)
+import certifi
 
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
+engine = create_engine(
+    database_url,
+    connect_args={
+        "ssl": {
+            "ca": certifi.where()
+        }
+    }
 )
 
 Base = declarative_base()
