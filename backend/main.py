@@ -8,7 +8,7 @@ from database import engine, Base
 from routes.auth_routes import router as auth_router
 from routes.product_routes import router as product_router
 from routes.dashboard_routes import router as dashboard_router
-
+from fastapi.middleware.cors import CORSMiddleware
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -19,7 +19,13 @@ app = FastAPI(
     description="Inventory Management System API",
     version="1.0.0"
 )
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Register authentication routes
 app.include_router(auth_router)
