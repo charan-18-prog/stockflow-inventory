@@ -1,0 +1,54 @@
+
+from fastapi import FastAPI
+from sqlalchemy import text
+
+import models
+
+from database import engine, Base
+from routes.auth_routes import router as auth_router
+
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+
+app = FastAPI(
+    title="StockFlow Inventory Management",
+    description="Inventory Management System API",
+    version="1.0.0"
+)
+
+
+# Register authentication routes
+app.include_router(auth_router)
+
+
+@app.get("/")
+def home():
+    return {
+        "message": "Welcome to StockFlow Inventory Management API"
+    }
+
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "Backend is running"
+    }
+
+
+@app.get("/db-check")
+def database_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+
+        return {
+            "status": "Database connected successfully"
+        }
+
+    except Exception as error:
+        return {
+            "status": "Database connection failed",
+            "error": str(error)
+        }
