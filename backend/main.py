@@ -6,6 +6,8 @@ import models
 
 from database import engine, Base
 from routes.auth_routes import router as auth_router
+from routes.product_routes import router as product_router
+from routes.dashboard_routes import router as dashboard_router
 
 
 # Create database tables
@@ -21,6 +23,8 @@ app = FastAPI(
 
 # Register authentication routes
 app.include_router(auth_router)
+app.include_router(product_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/")
